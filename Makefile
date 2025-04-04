@@ -37,9 +37,6 @@ $(LIB_HYPERGIRGS_WRAP): girg_sampling/_libhypergirgs_wrapper.cpp $(LIB_HYPERGIRG
 
 build: submodules $(LIB_GIRGS_WRAP) $(LIB_HYPERGIRGS_WRAP)
 
-submodules:
-	git submodule init
-	git submodule update
 
 test:
 	poetry install
