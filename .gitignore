@@ -1,0 +1,6 @@
+girg_sampling/_libgirgs_wrapper.so
+girg_sampling/_libhypergirgs_wrapper.so
+girg_sampling/libgirgs.so.1
+girg_sampling/libhypergirgs.so.1
+girgs_cpplib/
+poetry.lock
