@@ -38,12 +38,13 @@ def generateEdges(
     weights: List[float],
     positions: List[List[float]],
     alpha: float,
+    scale: float,
     *,
     seed: int = None,
 ) -> List[Tuple[int, int]]:
     if seed is None:
         seed = random.randint(0, (1 << 31) - 1)
-    return _libgirgs_wrapper.generateEdges(weights, positions, alpha, seed)
+    return _libgirgs_wrapper.generateEdges(weights, positions, alpha, scale, seed)
 
 
 def generate_networkx_girg(
