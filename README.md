@@ -1,121 +1,24 @@
-GIRG code is working!
-John Lapinskas
-​
-Johannes Lengler <johannes.lengler@inf.ethz.ch>;
-​
-Julia Komjathy <J.Komjathy@tudelft.nl>;
-​
-Schaller Ulysse <ulysses@ethz.ch>;
-​
-Zylan Benjert <Z.Benjert@student.tudelft.nl>
-​
-...aaaaand fixed. This time it actually was easy, and the statistical unit tests are all passing. 🙂
+GIRG sampling
 
-So we now have fully working GIRG sampling code using the ideologically correct distribution! It's in the original git repo for our code plus two new ones, one for the forked C++ code and one for the forked Python bindings - those two need to live in WSL so I didn't want to integrate them into the main repo, which at least on my system lives on a Windows partition. I've just sent Zylan invites to both of these and am obviously happy to add anyone else who wants access, I just need your GitHub usernames. Here's the documentation I wrote, it's not exactly release-ready but it should be good enough for us to refer back to! I now also think I understand the C++ code well enough to make more significant changes without too much trouble if need be, as long as we don't mind them not being very well-optimised.
+A Python wrapper for the GIRGs sampling library (C++). Contains a direct wraper of the C++ library and NetworkX Graph generators (optional). Efficiently generates Geometric Inhomogeneous Random Graphs (GIRGs) and Hyperbolic Random Graphs (HRGs).
 
-Next step: porting over Zylan's code to load in the Gowalla graph, which should be a lot easier. 
+See the paper Efficiently Generating Geometric Inhomogeneous and Hyperbolic Random Graphs for details of the algorithm.
+Install
 
-Best wishes,
+Install from PyPI as girg-sampling via pip, poetry etc. To build the package locally, install Poetry package manager and run poetry build, optionally with poetry install.
 
-John.
+To use generateNetworkX functions, you need to have the networkx package (not a default dependency of girg-sampling)
+Usage
 
-----------------------------------------------
-INSTALLING THE WHOLE THING
-----------------------------------------------
+import girg_sampling
 
-In a WSL terminal:
+g = girg_sampling.girgs.generateNetworkX(n=135, ple=1.5, dim=4, deg=4.2, alpha=100, seed=41)
+h = girg_sampling.hypergirgs.generateNetworkX(n=1001, alpha=0.75, T=0.7, deg=2.2, seed=None)
 
-[Install the basics for the project]
-> sudo apt-get install build-essential clang cmake gcc gdb python3-poetry git libgtest-dev
+See tests for sample usage of the raw C++ wrappers.
+Changelog
 
-[The project needs CMake 3.24+, but WSL right now comes with Ubuntu Jammy Jellyfish which only goes up to 3.22.1 in the repos. So we install the latest version.]
-> wget -O - https://apt.kitware.com/keys/kitware-archive-latest.asc | sudo apt-key add -
-> sudo apt-add-repository 'deb https://apt.kitware.com/ubuntu/ jammy main'
-> sudo apt-get update
-> sudo apt-get install cmake
-
-[Clone the source code]
-> cd ~
-> git clone https://github.com/Hamiltonicity/py-girgs-fork py_girgs
-> cd py_girgs
-> git clone https://github.com/Hamiltonicity/cpp-girgs-fork girgs_cpplib
-
-[Build the source code]
-> poetry lock
-> poetry install
-
-[Test the GIRG library on the C side]
-> ./girgs_cpplib/build/girgs-test
-
-[Add the working directory to PYTHONPATH in PyCharm - in principle you should be able to put it in your virtual environment of choice, but I had Problems getting this to work in Pycharm and this is a simple workaround...)]
-
-> Run -> Edit configurations -> Edit configuration templates -> Python -> Button to the right of "Environment variables", then add a new environment variable called PYTHONPATH set to "/home/[your WSL username]/py_girgs".
-> Create a new template (since the default "Current file" one doesn't let you set environment variables) with script set to $FilePath$ (which runs the current file) and working directory set to $FileDir$. Call it "Default" or similar.
-> File -> Settings -> Build, Execution, Deployment -> Console -> Python Console -> Button to the right of "Environment variables", then add a new environment variable called PYTHONPATH set to "/home/[your WSL username]/py_girgs".
-[Note that "~/py_girgs" doesn't work since the ~ doesn't get expanded.]
-
-[The IDE will give a scary red underline on all the "import girg_sampling.girgs" lines but it should all work fine.]
-
-[Test the Python bindings.]
-> Run TestSIEpidemic.py as main.
-
-- To be sure everything has built correctly and you're not still using an old version, run TestSIEpidemic.py from the refactor branch of girg-simulations using the new Default template.
-
-[This will take a while, on the order of 5-10 minutes - I seem to need about 100k runs to get decently low p-values on these statistical tests, 10k normally still returns p-values close to 1.]
-
-----------------------------------------------
-BUILDING JUST THE C CODE (FOR TESTING)
-----------------------------------------------
-
-> cd ~/py_girgs/girgs_cpplib
-> cmake .
-> make
-
-----------------------------------------------
-REBUILDING THE PYTHON BINDINGS
-----------------------------------------------
-
-> cd ~/py_girgs
-> git clean -dfx
-> poetry lock
-> poetry install
-
-----------------------------------------------
-LIST OF CHANGES TO FORK COMPARED TO BASE REPOS
-----------------------------------------------
-
-- In ./CMakeLists.txt, the OPTION_BUILD_TESTS flag is set to ON for reasons that are probably obvious from the name. (This has no performance implications, it just builds another binary for the unit tests.)
-
-- Added a "scale" parameter to the generateEdges function which multiplies all connection probabilities in place of the old 1/m_W (where m_W was the total weight).
-
-- Straightforward m_W usages in source/girgs/include/SpatialTree.inl:
-
-* In sampleTypeI for the connection probability -> becomes 1/m_scale
-* In sampleTypeII for an upper bound on possible connection probabilities -> becomes 1/m_scale
-* In sampleTypeI for the connection probability -> becomes 1/m_scale
-
-- Less straightforward m_W usages in source/girgs/include/SpatialTree.inl:
-
-* m_baseLevelConstant is the base layer of the partition, where each cell has volume between \nu(i,j) and 2\nu(i,j) as defined in the paper. This would normally not need to change, as \nu(i, j) is just picked to make the running time sensible. But Christopher realised that taking \nu(i,j) as in the paper means the distance between cells is large enough that when doing Type II sampling, we don't need to consider the min with 1 in connection probabilities, which saves time. And because he was a kind and benevolent soul, he backed this up with assert statements in the code so mere mortals were able to notice when they broke it. To ensure this keeps working, we need to redefine \nu(i,j) from w_i*w_j/W to w_i*w_j*m_scale, which corresponds to changing m_baseLevelConstant from log2(W/w_0^2) to log2(1/(m_scale*w_0^2)). This doesn't break anything about the algorithm, the only thing \nu(i,j) is important for is the running time analysis and we will always have 1/m_scale = \Theta(W) anyway.
-* The debug assertions in weightLayerTargetLevel and partitioningBaseLevel are both checking we're requesting cells with the right total volume, so this m_W gets replaced by 1/m_scale corresponding to the changes to m_baseLevelConstant (or equivalently to \nu).
-
-- The code to turn a desired average degree into a desired weight scaling has been completely broken by this change, and since we're not using the functionality I've just dummied it out and added an uncaught exception to the front of the scaleWeights function in case we're tempted to use it.
-
--  Updates to unit tests in source/tests/girgs-test/Generator_test.cpp (the main generation code tests):
-
-* In testThresholdModel, the w_term variable goes from W_i*W_j/W to W_i*W_j*m_scale.
-* In testGeneralModel, the w_term variable goes from W_i*W_j/W to W_i*W_j*m_scale.
-* In edgesInQuadraticSampling, the threshold distance goes from (W_i*W_j/W)^{1/d} to (W_i*W_j*m_scale)^{1/d}.
-* Dummied out testThresholdEstimation and testEstimation as these rely on the weight scaling estimation that's currently broken.
-
-- Dummied out WeightScaling_test.cpp and DegreeEstimation_test.cpp as these again rely on the weight scaling estimation.
-
-- Added a scale parameter to the CLI in source/cli/gengirg/main.cpp. (We don't use the CLI but not doing this would have broken the build, and adding support was easier than working out the makefiles to take it out of the build...)
-
-- Changed the point distance function in test/girgs-test/main.cpp, the node distance function in source/girgs/include/girgs/Node.h, and the cell distance function in source/girgs/include/girgs/SpatialTreeCoordinateHelper.h to use Euclidean distance instead of L_infty.
-
-- In the Python bindings, the poetry.lock file is corrupted or outdated somehow and breaks the build unless it's deleted and recreated - removed it from the repo.
-
-- In the Makefile of the Python bindings, the "git submodule" lines also break the build and don't seem to be necessary, so I removed them.
-
-- In girgs.py, added "scale" argument to generateEdges to match the new argument in the C++ code.
+    0.1.0: A direct wrapper of the C++ graph generator functions.
+    0.2.0: Minor fixes, unify seed param, add e2e tests, build wheels for python up to 3.10
+    0.2.1: Update urllib3 dev-dependency for twine under Python 3.10
+    0.3.0: Add NetworkX wrapper, update python version, add docs.
