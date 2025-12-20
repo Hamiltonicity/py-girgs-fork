@@ -1,5 +1,7 @@
+These instructions are provided on an "as is" basis and originally intended for use by direct co-authors. 
+
 ----------------------------------------------
-INSTALLING THE WHOLE THING
+INSTALLING THE WHOLE THING (WINDOWS)
 ----------------------------------------------
 
 In a WSL terminal:
@@ -38,26 +40,40 @@ In a WSL terminal:
 [Test the Python bindings.]
 > Run TestSIEpidemic.py as main.
 
-- To be sure everything has built correctly and you're not still using an old version, run TestSIEpidemic.py from the refactor branch of girg-simulations using the new Default template.
-
-[This will take a while, on the order of 5-10 minutes - I seem to need about 100k runs to get decently low p-values on these statistical tests, 10k normally still returns p-values close to 1.]
+- To be sure everything has built correctly and you're not still using an old version, run all unit tests using the new Default template. (Some of them will take a while, on the order of 5-20 minutes.)
 
 ----------------------------------------------
-BUILDING JUST THE C CODE (FOR TESTING)
+INSTALLING THE WHOLE THING (LINUX)
 ----------------------------------------------
 
-> cd ~/py_girgs/girgs_cpplib
-> cmake .
-> make
+From a terminal:
 
-----------------------------------------------
-REBUILDING THE PYTHON BINDINGS
-----------------------------------------------
+[Install basic prerequisites]
+> sudo apt-get install build-essential clang cmake gcc gdb python3-poetry git libgtest-dev
 
-> cd ~/py_girgs
-> git clean -dfx
-> poetry lock
-> poetry install
+[Graph-tool needs to be installed to a conda environment, NB girg-sampling needs Python 3.12 specifically]
+> conda create -name girg-simulations -c conda-forge python=3.12 graph-tool
+
+[Start working in the conda environment.]
+> conda activate girg-simulations
+
+[Install all the other requirements to the conda environment.]
+> conda install -c conda-forge dill haversine matplotlib numpy requests scipy cartopy shapely scikit-learn pillow
+
+[Clone the source code]
+> cd ~
+> git clone https://github.com/Hamiltonicity/py-girgs-fork py_girgs
+> cd py_girgs
+> git clone https://github.com/Hamiltonicity/cpp-girgs-fork girgs_cpplib
+
+[Install girg-sampling *from inside the conda environment*.]
+> python -m pip install -U pip wheel setuptools pybind11
+> python -m pip install . --no-build-isolation
+
+[Test the GIRG library on the C side]
+> ./girgs_cpplib/build/girgs-test
+
+Now from inside Pycharm, go to settings -> interpreter -> add local interpreter -> select existing and then pick conda for "type" and the girg-simulations option for environment.
 
 ----------------------------------------------
 LIST OF CHANGES TO FORK COMPARED TO BASE REPOS
@@ -75,7 +91,7 @@ LIST OF CHANGES TO FORK COMPARED TO BASE REPOS
 
 - Less straightforward m_W usages in source/girgs/include/SpatialTree.inl:
 
-* m_baseLevelConstant is the base layer of the partition, where each cell has volume between \nu(i,j) and 2\nu(i,j) as defined in the paper. This would normally not need to change, as \nu(i, j) is just picked to make the running time sensible. But Christopher realised that taking \nu(i,j) as in the paper means the distance between cells is large enough that when doing Type II sampling, we don't need to consider the min with 1 in connection probabilities, which saves time. And because he was a kind and benevolent soul, he backed this up with assert statements in the code so mere mortals were able to notice when they broke it. To ensure this keeps working, we need to redefine \nu(i,j) from w_i*w_j/W to w_i*w_j*m_scale, which corresponds to changing m_baseLevelConstant from log2(W/w_0^2) to log2(1/(m_scale*w_0^2)). This doesn't break anything about the algorithm, the only thing \nu(i,j) is important for is the running time analysis and we will always have 1/m_scale = \Theta(W) anyway.
+* m_baseLevelConstant is the base layer of the partition, where each cell has volume between \nu(i,j) and 2\nu(i,j) as defined in the paper. This would normally not need to change, as \nu(i, j) is just picked to make the running time sensible. But Christopher realised that taking \nu(i,j) as in the paper means the distance between cells is large enough that when doing Type II sampling, we don't need to consider the min with 1 in connection probabilities, which saves time. And because he was a kind and benevolent soul, he backed this up with assert statements in the code so other people would be able to notice when they made a change that broke this assumption. To ensure this keeps working, we need to redefine \nu(i,j) from w_i*w_j/W to w_i*w_j*m_scale, which corresponds to changing m_baseLevelConstant from log2(W/w_0^2) to log2(1/(m_scale*w_0^2)). This doesn't break anything about the algorithm, the only thing \nu(i,j) is important for is the running time analysis and we will always have 1/m_scale = \Theta(W) anyway.
 * The debug assertions in weightLayerTargetLevel and partitioningBaseLevel are both checking we're requesting cells with the right total volume, so this m_W gets replaced by 1/m_scale corresponding to the changes to m_baseLevelConstant (or equivalently to \nu).
 
 - The code to turn a desired average degree into a desired weight scaling has been completely broken by this change, and since we're not using the functionality I've just dummied it out and added an uncaught exception to the front of the scaleWeights function in case we're tempted to use it.
