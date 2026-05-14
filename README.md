@@ -1,3 +1,5 @@
+This is a fork of software originally made available at https://github.com/gavento/girg-sampling, released for public access to allow reproducing the results of [this paper](https://arxiv.org/abs/2604.26939). Original README.md follows.
+
 GIRG sampling
 
 A Python wrapper for the GIRGs sampling library (C++). Contains a direct wrapper of the C++ library and NetworkX Graph generators (optional). Efficiently generates Geometric Inhomogeneous Random Graphs (GIRGs) and Hyperbolic Random Graphs (HRGs).
