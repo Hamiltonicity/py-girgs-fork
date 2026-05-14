@@ -1,4 +1,4 @@
-This is a fork of software originally made available at https://github.com/gavento/girg-sampling, released for public access to allow reproducing the results of [this paper](https://arxiv.org/abs/2604.26939). Original README.md follows.
+This is a fork of software originally written by Tomáš Gavenčiak and made available at https://github.com/gavento/girg-sampling, released for public access to allow reproducing the results of [this paper](https://arxiv.org/abs/2604.26939). Original README.md follows.
 
 GIRG sampling
 
